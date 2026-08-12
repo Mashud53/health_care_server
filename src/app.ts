@@ -1,6 +1,7 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, {
+	NextFunction,
 	type Application,
 	type Request,
 	type Response,
@@ -10,6 +11,8 @@ import config from "./app/config";
 import { globalErrorHandler } from "./app/middleware/globalErrorHandler";
 import { notFound } from "./app/middleware/notFound";
 import { AuthRoutes } from "./app/module/auth/auth.route";
+import { redisClient } from "./app/lib/redis";
+import crypto from "crypto"
 // import z, { date } from "zod";
 
 const app: Application = express();
@@ -30,32 +33,27 @@ app.use(cookieParser());
 
 app.use("/api/v1/auth", AuthRoutes);
 
-// app.post("/zod", (req: Request, res: Response, next: NextFunction)=>{
+app.get("/test", async(req: Request, res: Response, next: NextFunction) => {
+	try {
+		const otp = crypto.randomInt(100000, 1000000)
+		await redisClient.set("forgot-password:patient1@gmail.com", otp,{
+			expiration:{
+				type:"EX",
+				value: 5*60
+			}
+		})
+		
 
-// 	try {
-// 		const UserZodSchea = z.object({
-// 		name: z.string(),
-// 		email:z.email(),
-// 		age: z.number(),
-// 		isVerified: z.boolean(),
-// 		books : z.array(z.string())
-// 	})
-
-// 	const payload = req.body;
-
-// 	const result = UserZodSchea.parse(payload)
-// 	console.log(result);
-
-// 	res.status(httpStatus.OK).json({
-// 		success: true,
-// 		message: "Welcome to PH Healthcare System Backend",
-// 		date: result
-// 	});
-// 	} catch (error) {
-// 		console.log(error);
-// 		next(error)
-// 	}
-// })
+		res.status(httpStatus.OK).json({
+			success: true,
+			message: "Welcome to PH Healthcare System Backend",
+			date: otp,
+		});
+	} catch (error) {
+		console.log(error);
+		next(error);
+	}
+});
 
 // Basic route
 app.get("/", async (req: Request, res: Response) => {
