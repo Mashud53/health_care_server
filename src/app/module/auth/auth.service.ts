@@ -22,6 +22,9 @@ import { googleClient } from "../../lib/googleAuth";
 import crypto from "crypto";
 import { redisClient } from "../../lib/redis";
 import { number } from "zod";
+import { transporter } from "../../lib/nodeMailer";
+import ejs, { name } from "ejs"
+import path from "path";
 
 const registerPatient = async (payload: IRegisterPatientPayload) => {
 	const { name, password, patient: patinetData } = payload;
@@ -360,6 +363,19 @@ const forgotPassword = async (payload: ForgotPasswordPayload) => {
 			value: 5 * 60,
 		},
 	});
+	const templatePath = path.join(process.cwd(), "src/app/templates/forgot-password.ejs")
+	const html=await ejs.renderFile(templatePath, {
+		otp:otp
+	})
+
+	await transporter.sendMail({
+		from: config.email_sender,
+		to: isUserExist.email,
+		subject: "Forgot Password",
+		// text:`Your otp is ${otp}`
+		// html:`<h1>Your otp is ${otp}</h1>`
+		html
+	})
 };
 const resetPassword = async (payload: resetPasswordPayload) => {
 	const { email, newPassword, otp } = payload;
@@ -393,7 +409,7 @@ const resetPassword = async (payload: resetPasswordPayload) => {
 	}
 
 	const hashNewPassword = await bcrypt.hash(newPassword, Number(config.bcrypt_salt_rounds))
-	const updateUser = await prisma.user.update({
+	await prisma.user.update({
 		where:{
 			email: isUserExist.email
 		},
@@ -403,6 +419,19 @@ const resetPassword = async (payload: resetPasswordPayload) => {
 	})
 
 	await redisClient.del([key])
+	const templatePath = path.join(process.cwd(), "src/app/templates/reset-password-success.ejs")
+	const html=await ejs.renderFile(templatePath, {
+		name: isUserExist.name
+	})
+
+	await transporter.sendMail({
+		from: config.email_sender,
+		to: isUserExist.email,
+		subject: "Password Chaanged",
+		// text:`Your otp is ${otp}`
+		// html:`<h1>Your otp is ${otp}</h1>`
+		html
+	})
 
 };
 
